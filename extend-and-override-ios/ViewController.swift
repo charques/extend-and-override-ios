@@ -9,7 +9,7 @@
 import UIKit
 import WebKit
 
-class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate {
+class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKScriptMessageHandler {
 
     var webView: WKWebView!
     var progressView: UIProgressView?
@@ -51,6 +51,16 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate {
         // Dispose of any resources that can be recreated.
     }
     
+    
+    // -----------------------------------
+    // WKScriptMessageHandler methods
+    // -----------------------------------
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if(message.name == "callbackHandler") {
+            print("JavaScript is sending a message \(message.body)")
+        }
+    }
+    
     // -----------------------------------
     // WKNavigationDelegate methods
     // -----------------------------------
@@ -83,6 +93,10 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate {
         print("webView didFail", navigation, error)
     }
     
+    // -----------------------------------
+    // WKUIDelegate methods
+    // -----------------------------------
+    
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
         print("webView runJavaScriptAlertPanelWithMessage", message)
     }
@@ -98,10 +112,27 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate {
     // -----------------------------------
     // Create view methods
     // -----------------------------------
+    
+    func createContentController() -> WKUserContentController {
+        let contentController = WKUserContentController();
+        let userScript = WKUserScript(
+            source: "customLogo()",
+            injectionTime: WKUserScriptInjectionTime.atDocumentEnd,
+            forMainFrameOnly: true
+        )
+        contentController.addUserScript(userScript)
+        contentController.add(
+            self,
+            name: "callbackHandler"
+        )
+        return contentController
+    }
+
     func createComponents() {
         // Create WKWebView in code, because IB cannot add a WKWebView directly
-        webView = WKWebView()
-        webView.frame = CGRect(x: 0, y: 70, width: 375, height: 637)
+        let config = WKWebViewConfiguration()
+        config.userContentController = createContentController()
+        webView = WKWebView(frame: CGRect(x: 0, y: 70, width: 375, height: 637), configuration: config)
         view.addSubview(webView)
         
         // Create Progress View Control
@@ -114,16 +145,16 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate {
         backButton.frame = CGRect(x: 0, y: 25, width: 100, height: 40)
         backButton.setTitle("Back",for: .normal)
         backButton.layer.cornerRadius = 4
-        backButton.addTarget(self, action: #selector(buttonAction), for: .touchUpInside)
-        backButton.tag = 1;
         backButton.backgroundColor = UIColor(red: 255.0/255.0, green: 255.0/255.0, blue: 255.0/255.0, alpha: 1)
+        backButton.addTarget(self, action: #selector(buttonAction), for: .touchUpInside)
+        backButton.tag = 1
         forwardButton = UIButton(type: UIButtonType.roundedRect)
         forwardButton.frame = CGRect(x: 275, y: 25, width: 100, height: 40)
         forwardButton.setTitle("Forward",for: .normal)
         forwardButton.layer.cornerRadius = 4
-        forwardButton.addTarget(self, action: #selector(buttonAction), for: .touchUpInside)
-        forwardButton.tag = 2;
         forwardButton.backgroundColor = UIColor(red: 255.0/255.0, green: 255.0/255.0, blue: 255.0/255.0, alpha: 1)
+        forwardButton.addTarget(self, action: #selector(buttonAction), for: .touchUpInside)
+        forwardButton.tag = 2
         view.addSubview(backButton)
         view.addSubview(forwardButton)
         
