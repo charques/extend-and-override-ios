@@ -89,8 +89,46 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
     // WKScriptMessageHandler methods
     // -----------------------------------
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        if(message.name == "callbackHandler") {
-            print("JavaScript is sending a message \(message.body)")
+        let sentData = message.body as! NSDictionary
+        
+        let command = sentData["cmd"] as! String
+        var response = Dictionary<String,AnyObject>()
+        
+        // INCREMENT COMMAND
+        if command == "increment"{
+            guard var count = sentData["count"] as? Int else{
+                return
+            }
+            count += 1
+            response["count"] = count as AnyObject?
+        }
+        // END INCREMENT COMMAND
+        
+        let callbackString = sentData["callbackFunc"] as? String
+        sendResponse(aResponse: response, callback: callbackString)
+    }
+    
+    func sendResponse(aResponse:Dictionary<String,AnyObject>, callback:String?){
+        guard let callbackString = callback else{
+            return
+        }
+        guard let generatedJSONData = try? JSONSerialization.data(withJSONObject: aResponse, options: JSONSerialization.WritingOptions(rawValue: 0)) else{
+            print("failed to generate JSON for \(aResponse)")
+            return
+        }
+        
+        webView.evaluateJavaScript("(\(callbackString)('\(NSString(data:generatedJSONData, encoding:String.Encoding.utf8.rawValue)!)'))") { (JSReturnValue:Any?, error:Error?) in
+
+            if error != nil {
+                let errorDescription = (error as! NSError).description
+                print("returned value: \(errorDescription)")
+            }
+            else if JSReturnValue != nil{
+                print("returned value: \(JSReturnValue!)")
+            }
+            else{
+                print("no return from JS")
+            }
         }
     }
     
@@ -241,7 +279,7 @@ class ViewController: UIViewController, WKUIDelegate, WKNavigationDelegate, WKSc
         // Set JS callback handler
         contentController.add(
             self,
-            name: "callbackHandler"
+            name: "native"
         )
         return contentController
     }
